@@ -1,4 +1,4 @@
-source('GenerateData.R')
+source('GenerateData.r')
 library(np)
 # No Zero Denominator, used in C code for kernel estimation... (from 'np' package : https://CRAN.R-project.org/package=np)
 NZD <- function(a) {
@@ -11,6 +11,7 @@ NZD <- function(a) {
 
 # beta0 = 0 no intercept
 beta = matrix(runif(length(mu),-3,3),ncol = 1)
+beta = beta / norm(beta,"2")
 Xquta = X
 
 h = 0.5 #bandwidth
@@ -19,7 +20,7 @@ difference = 1
 eps = 1e-8
 k = 0
 
-while (difference>eps & k < 500){
+while (difference>eps & k < 1000){
   
   Floor <- sqrt(.Machine$double.eps)
   W = rep(0,N)
@@ -81,18 +82,21 @@ while (difference>eps & k < 500){
   }
   
   para_est = optim(par = beta, fn = l_I, method = "BFGS",control = list(fnscale=1))
+  beta_est = para_est$par / norm(para_est$par, "2")
   
-  index = Xquta %*% para_est$par
+  index = Xquta %*% beta_est
   W = as.matrix(data.frame(B,1))
   K.sum = npksum(txdat=index, tydat=W,weights=W,bws= bdwth,ckertype="epanechnikov",leave.one.out = T)$ksum
   g.hat = K.sum[1,2,]/NZD(K.sum[2,2,])
   # g.hat = g_hat(para_est$par,X,h,W)
   
-  difference = sum(para_est$par - beta)^2 + sum(g - g.hat)^2
+  difference = sum(beta_est - beta)^2 + sum(g - g.hat)^2
   # difference = sum(g - g.hat)^2
-  beta = para_est$par
+  beta = beta_est
   g = g.hat
   k = k+1
 }
 
-data.frame(log_Y,g)[1:50,]
+data.frame(log_Y,g+error)[1:50,]
+
+data.frame(beta_true,beta_est)
