@@ -1,3 +1,4 @@
+setwd("D:/2018+/term2/SIM/mycode")
 source('GenerateData.r')
 library(np)
 # No Zero Denominator, used in C code for kernel estimation... (from 'np' package : https://CRAN.R-project.org/package=np)
@@ -38,17 +39,17 @@ while (difference>eps & k < 1000){
       index = Xquta %*% beta
       W = as.matrix(data.frame(B,1))
       K.sum = npksum(txdat = index, tydat = W, weights = W,bws = h, ckertype = "epanechnikov",leave.one.out = T)$ksum
-      g = K.sum[1,2,]/NZD(K.sum[2,2,])
+      g_new = K.sum[1,2,]/NZD(K.sum[2,2,])
       # g = g_hat(beta,X,h,W)
       Floor = sqrt(.Machine$double.eps)
-      g[which(g<Floor)] <- Floor
-      g[which(g>1-Floor)] <- 1 - Floor
+      g_new[which(g_new<Floor)] <- Floor
+      g_new[which(g_new>1-Floor)] <- 1 - Floor
       contrib = rep(NA,N)
       for(i in 1:N){
         if(Delta[i]==1) contrib[i] <- (log_Y[i] - g[i])^2
         if(Delta[i]==0){
           a = log_Y[i] - g[i]
-          contrib[i] = 1 + a * dnorm(a,0,1)/max((1-pnorm(a, 0, 1)), Floor)
+          contrib[i] = 1 + (a + 2*g[i] - 2*g_new[i]) * dnorm(a,0,1)/max((1-pnorm(a, 0, 1)), Floor) + (g[i]-g_new[i])^2
         }
       }
       return(sum(contrib))
@@ -66,16 +67,16 @@ while (difference>eps & k < 1000){
     index <- Xquta %*% beta
     W = as.matrix(data.frame(B,1))
     K.sum = npksum(txdat=index, tydat=W,weights=W,bws=h,ckertype="epanechnikov",leave.one.out = T)$ksum
-    g = K.sum[1,2,]/NZD(K.sum[2,2,])
+    g_new = K.sum[1,2,]/NZD(K.sum[2,2,])
     # g = g_hat(beta,X,h,B)
-    g[which(g<Floor)] <- Floor
-    g[which(g>1-Floor)] <- 1 - Floor
+    g_new[which(g_new<Floor)] <- Floor
+    g_new[which(g_new>1-Floor)] <- 1 - Floor
     contrib <- rep(NA,N)
     for(i in 1:N){
       if(Delta[i]==1) contrib[i] <- (log_Y[i] - g[i])^2
       if(Delta[i]==0){
         a = log_Y[i] - g[i]
-        contrib[i] = 1 + a * dnorm(a,0,1)/max((1-pnorm(a, 0, 1)), Floor)
+        contrib[i] = 1 + (a + 2*g[i] - 2*g_new[i]) * dnorm(a,0,1)/max((1-pnorm(a, 0, 1)), Floor) + (g[i]-g_new[i])^2
       } 
     }
     return(mean(contrib))
@@ -97,6 +98,6 @@ while (difference>eps & k < 1000){
   k = k+1
 }
 
-data.frame(log_Y,g+error)[1:50,]
+data.frame(log_Y,g+error)[1:20,]
 
 data.frame(beta_true,beta_est)
